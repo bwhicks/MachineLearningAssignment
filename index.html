@@ -1,1 +1,235 @@
-Hello world!
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <meta charset='utf-8'/>
+</head>
+
+<body>
+  <div class='container'>
+    <div class='jumbotron'>
+      <h2> Coursera / Johns Hopkins University - Practical Machine Learning</h2>
+      <h2> Week Four Assignment </h2>
+
+      <h2> Benjamin Hicks </h2>
+      <h2> 15 January 2017 </h2>
+    </div>
+
+
+    <h3>Introduction</h3>
+    <hr>
+    <p>This page serves as a write-up of the process I used to analyze a subset
+    of the <a href='http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises'
+    target='_blank'>
+    HAR Weight Lifting Data</a>, which was presented as part of Coursera/JHU'
+    Practical Machine Learning course in the Data Science Certification.</s></p>
+
+    <p> The exercise presented us with two datasets, one for training and cross-validation,
+    one for a verification quiz. The sets used acceleromter measurements measure
+    weight lifting activity that was then ranked on a scale of A-E to denote if
+    the form was correct or not.</p>
+
+    <p>The assignment was:
+
+      <blockquote>
+        The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did.
+        You will also use your prediction model to predict 20 different test cases.
+      </blockquote>
+      I have noted steps and major codeblocks below. Detailed script may be found
+      on the <a href='https://github.com/bwhicks/MachineLearningAssignment/https://github.com/bwhicks/MachineLearningAssignment/blob/master/PML-Analysis.R'>main branch</a> of this repo.
+    </p>
+
+
+    <h3>Initial Steps</h3>
+    <hr>
+    <p>I first loaded the dataset in and made sure to set any cruft values to NA
+      for R's purposes.
+      <pre>
+# Download the files
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv',
+              'pml-training.csv')
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv',
+              'pml-testing.csv')
+# Cruft removal values
+na.values <- c('NA','#DIV/0!', '')
+training <- read.csv('pml-training.csv', na.strings = na.values)
+testing <- read.csv('pml-testing.csv', na.strings = na.values)
+      </pre>
+    </p>
+    <p>
+    I then removed the initial columns that gave no or little information
+    relevant to my prediction (i.e. name of participant, window times, etc.) and
+    also removed columns that were used only in summaries of each testing window
+    not individual exercises. These were the only columns with NA values, and
+    so I stripped them aggressively.
+
+    <pre>
+training_clean <- training[,(colSums(is.na(training)) == 0)]
+training_clean <- training_clean[,-(1:7)]
+
+testing_clean <- testing[,(colSums(is.na(testing)) == 0)]
+testing_clean <- testing_clean[,-(1:7)]
+    </pre>
+    This produced a data set with 53 variables for both testing and training.
+    </p>
+    <h3>Initial Model: Classification Tree</h3>
+    <hr>
+    <p>As an initial model, I used the caret package to create a decision tree
+      using rpart and render it with rattle both to see if a less processing
+      intensive model would be acceptable.
+
+      My cross-validation for all models was a random 60/40 split of the training
+      set provided by the exercise.
+    </p>
+
+    <pre>
+# Split training set 60/40 to make a cross-validation set to establish
+# the expected rate of error.
+
+inTrain <-createDataPartition(y=training_clean$classe, p = 0.6, list=FALSE)
+training <- training_clean[inTrain,]
+validation <- training_clean[-inTrain,]
+
+# Do a quick decision tree using rpart, just to get a sense of how effective
+# a low accuracy sort might be on the dataset as is.
+rpart_fit <- train(classe ~ ., data=training, method = 'rpart')
+pred1 <- predict(rpart_fit, validation)
+
+# Plot the decision tree using rattle
+png('rpart_plot.png', width=960, height=960)
+fancyRpartPlot(rpart_fit$finalModel)
+dev.off()
+
+# Get the out of sample error for the cross-validation data
+confusionMatrix(pred1, validation$classe)
+    </pre>
+
+    <p>The results, when cross-validated, suggested an out-of-sample error rate above
+      50%, but did indicate some variables that might be important. The sensitivity
+      for most of the possible prediction outcomes was far too low.
+      <h5>Figure 1</h5>
+      <a href='rpart_plot.png' target='_blank'><img
+        src='rpart_plot.png'/ height='50%' width='50%'></a>
+    </p>
+
+    <pre>
+  Confusion Matrix and Statistics
+
+      Reference
+Prediction    A    B    C    D    E
+     A 2033  650  670  594  204
+     B   32  406   14  205   79
+     C  161  462  684  487  483
+     D    0    0    0    0    0
+     E    6    0    0    0  676
+
+Overall Statistics
+
+           Accuracy : 0.4842
+             95% CI : (0.4731, 0.4953)
+No Information Rate : 0.2845
+P-Value [Acc > NIR] : < 2.2e-16
+
+              Kappa : 0.3255
+Mcnemar's Test P-Value : NA
+
+Statistics by Class:
+
+                 Class: A Class: B Class: C Class: D Class: E
+Sensitivity            0.9108  0.26746  0.50000   0.0000  0.46879
+Specificity            0.6227  0.94785  0.75409   1.0000  0.99906
+Pos Pred Value         0.4898  0.55163  0.30040      NaN  0.99120
+Neg Pred Value         0.9461  0.84360  0.87718   0.8361  0.89308
+Prevalence             0.2845  0.19347  0.17436   0.1639  0.18379
+Detection Rate         0.2591  0.05175  0.08718   0.0000  0.08616
+Detection Prevalence   0.5291  0.09381  0.29021   0.0000  0.08692
+Balanced Accuracy      0.7668  0.60765  0.62705   0.5000  0.73393
+    </pre>
+
+    <h3> Revised Model: Baggged CART </h3>
+    <hr>
+    <p>
+      The difficulties with a simple decision tree model implied that a
+      bootstrapped, aggregated CART would be effective at classification
+      and computational efficient (vs. the more intensive but potentially still
+      yet more accurate random forest model).
+    </p>
+    <pre>
+bag_fit <- train(classe ~ ., data = training, method = 'treebag')
+pred2 <- predict(bag_fit, validation)
+
+# Plot the importance of variables as a sanity check on the model
+# i.e., does it see some of the same major variables as rpart_fit?
+png('bag_fit_var_import.png', width=960, height=960)
+plot(varImp(bag_fit))
+dev.off()
+
+# Get the out of sample error for the cross-validation data
+confusionMatrix(pred2, validation$classe)
+    </pre>
+
+    <p>
+      The results were striking. Upon building the model in caret and cross-validating,
+      the projected out-of-sample error was only slightly over 1%, with an overall
+      ~ 99% accuracy.
+    </p>
+
+    <p> Also worth noting in terms of sanity checking, the new model also found
+      some of the same influencing variables but also correctly weighted others
+      the original decision tree missed.
+    </p>
+    <h5>Figure 2</h5>
+    <a href='bag_fit_var_import.png' target='_blank'>
+      <img src='bag_fit_var_import.png' height=50% width=50%></a>
+
+      <pre>
+      Confusion Matrix and Statistics
+
+          Reference
+Prediction    A    B    C    D    E
+         A 2223   19    0    0    0
+         B    8 1484   11    3    2
+         C    1   10 1345   16    4
+         D    0    4   12 1265    8
+         E    0    1    0    2 1428
+
+Overall Statistics
+
+               Accuracy : 0.9871
+                 95% CI : (0.9844, 0.9895)
+    No Information Rate : 0.2845
+    P-Value [Acc > NIR] : < 2.2e-16
+
+                  Kappa : 0.9837
+ Mcnemar's Test P-Value : NA
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            0.9960   0.9776   0.9832   0.9837   0.9903
+Specificity            0.9966   0.9962   0.9952   0.9963   0.9995
+Pos Pred Value         0.9915   0.9841   0.9775   0.9814   0.9979
+Neg Pred Value         0.9984   0.9946   0.9964   0.9968   0.9978
+Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+Detection Rate         0.2833   0.1891   0.1714   0.1612   0.1820
+Detection Prevalence   0.2858   0.1922   0.1754   0.1643   0.1824
+Balanced Accuracy      0.9963   0.9869   0.9892   0.9900   0.9949
+      </pre>
+      <h3>Conclusions</h3>
+      <hr>
+      <p> When applied to the 20 test sets and submitted, the treebagged model
+        was 100% effective.</p>
+
+        <h3>Citations</h3>
+        <hr>
+        <p>Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H.
+          <a href='http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201' target='_blank'>Qualitative Activity Recognition of Weight Lifting Exercises.</a> 
+          Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.</p>
+  </div>
+
+</body>
+</html>
