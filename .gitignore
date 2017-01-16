@@ -1,3 +1,6 @@
-.RHistory
-.DS_Store
-.swp
+*.RHistory
+*.DS_Store
+*.swp
+*.csv
+
+
