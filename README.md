@@ -8,7 +8,7 @@ The master branch includes the R script and output files from the script.
 
 The gh-pages branch includes the compiled HTML.
 
-## Note to Coursera Peer Graders
+## [Link]( https://bwhicks.github.io/MachineLearningAssignment/) for Coursera Peer Graders
 You may visit [this page](https://bwhicks.github.io/MachineLearningAssignment/) for my
 write-up and figures. If for some reason this link does not work, please clone
 and check-out the gh-pages branch for local viewing.
