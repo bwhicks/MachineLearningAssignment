@@ -6,7 +6,8 @@ assignment in the Coursera / JHU Practical Machine Learning course.
 
 The master branch includes the R script and output files from the script.
 
-The gh-pages branch includes the compiled HTML.
+# The gh-pages branch includes the compiled HTML along with the .md here AS PER THE COURSE INSTURCTION AND GRADING RUBRIC. 
+After cloning the repository you may `git checkout gh-pages` to view OR use the branch selector on github's web interface.
 
 ## [Link]( https://bwhicks.github.io/MachineLearningAssignment/) for Coursera Peer Graders
 You may visit [this page](https://bwhicks.github.io/MachineLearningAssignment/) for my
